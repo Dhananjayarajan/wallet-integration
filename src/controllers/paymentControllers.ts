@@ -1,9 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import { BigPromise } from "../middlewares/bigPromise";
 //import Stripe from "stripe";
-import { Currency, PrismaClient, Reason, TransactionStatus, TransactionType } from "@prisma/client";
+import { Currency, PrismaClient, ProductWallet, Reason, TransactionStatus, TransactionType } from "@prisma/client";
 import { razorpay } from "../services/razorPay";
 import crypto from 'crypto'
+import { Prisma } from "@prisma/client";
+
 
 
 const prisma = new PrismaClient();
@@ -75,6 +77,66 @@ export const createRazorpayOrder = BigPromise(async (
 interface GetSessionQuery {
   sessionId?: string;
 }
+
+
+
+export const debitMoneyForUse = BigPromise(async (req: Request, res: Response, _next: NextFunction) => {
+  const { email, amount, product_name, wallet } = req.body;
+
+  if (!email || !amount || !product_name || !wallet) {
+    return _next(new Error("All fields are required"));
+  }
+
+  //  Find user
+  const user = await prisma.users.findUnique({
+    where: { email },
+  });
+
+  if (!user) {
+    return _next(new Error("User not found"));
+  }
+
+  //  Validate wallet type
+  const validWallets = ["AI_AVATAR", "BROADCAST_BOT", "META_AD", "DATA_SCRAP"];
+  if (!validWallets.includes(wallet)) {
+    return _next(new Error("Invalid wallet type"));
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    const currentBalance = user[wallet.toLowerCase() + "_balance" as keyof typeof user] as Prisma.Decimal;
+
+
+    const updatedUser = await tx.users.update({
+      where: { id: user.id },
+      data: {
+        [`${wallet.toLowerCase()}_balance`]: new Prisma.Decimal(currentBalance).minus(amount),
+        updatedAt: new Date(),
+      },
+    });
+
+    const transaction = await tx.transactions.create({
+      data: {
+        transactionType: TransactionType.DEBIT,
+        amount: new Prisma.Decimal(amount),
+        product_name,
+        wallet: wallet as ProductWallet,
+        userId: user.id,
+        reason: Reason.SPENT,
+        status: TransactionStatus.SUCCESS,
+      },
+    });
+
+    return { updatedUser, transaction };
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Amount debited successfully",
+    user: result.updatedUser,
+    transaction: result.transaction,
+  });
+});
+
 
 
 

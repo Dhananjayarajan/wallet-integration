@@ -16,3 +16,6 @@ Thumbs.db
 
 # Prisma
 prisma/dev.db
+
+node_modules/.prisma/
+prisma/generated/

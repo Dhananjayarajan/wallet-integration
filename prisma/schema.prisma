@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model transactions {
+  id                   String            @id @default(uuid())
+  transactionType      TransactionType
+  amount               Decimal
+  currency             Currency          @default(INR)
+  product_name         String?
+  status               TransactionStatus
+  metadata             Json?
+  referenceId          String?           @unique
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @default(now())
+  userId               String
+  relatedTransactionId String?
+  razorpay_order_id    String?
+  razorpay_payment_id  String?
+  razorpay_signature   String?
+  wallet               ProductWallet?
+  reason               Reason
+  transactions         transactions?     @relation("transactionsTotransactions", fields: [relatedTransactionId], references: [id])
+  other_transactions   transactions[]    @relation("transactionsTotransactions")
+  users                users             @relation(fields: [userId], references: [id])
+
+  @@index([referenceId])
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+}
+
+model users {
+  id                    String         @id @default(uuid())
+  email                 String         @unique
+  balance               Decimal        @default(0)
+  lockedBalance         Decimal        @default(0)
+  currency              Currency       @default(INR)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @default(now())
+  ai_avatar_balance     Decimal        @default(0)
+  broadcast_bot_balance Decimal        @default(0)
+  data_scrap_balance    Decimal        @default(0)
+  meta_ad_balance       Decimal        @default(0)
+  transactions          transactions[]
+}
+
+enum Currency {
+  USD
+  INR
+  EUR
+  GBP
+}
+
+enum ProductWallet {
+  AI_AVATAR
+  BROADCAST_BOT
+  META_AD
+  DATA_SCRAP
+}
+
+enum Reason {
+  TOPUP
+  REFUND
+  SPENT
+  CANCELLED
+  ERROR
+  TRANSFER
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+enum TransactionType {
+  DEBIT
+  CREDIT
+}

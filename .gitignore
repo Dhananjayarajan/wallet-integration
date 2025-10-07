@@ -19,3 +19,5 @@ prisma/dev.db
 
 node_modules/.prisma/
 prisma/generated/
+generated/prisma/
+generated/

@@ -3,12 +3,12 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
 model transactions {
-  id                   String            @id @default(uuid())
+  id                   String            @id @default(cuid())
   transactionType      TransactionType
   amount               Decimal
   currency             Currency          @default(INR)
@@ -35,7 +35,7 @@ model transactions {
 }
 
 model users {
-  id                    String         @id @default(uuid())
+  id                    String         @id @default(cuid())
   email                 String         @unique
   balance               Decimal        @default(0)
   lockedBalance         Decimal        @default(0)
